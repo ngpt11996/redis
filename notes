@@ -602,3 +602,25 @@ Description: Items are removed from the cache in the order they were added.
 Pros: Simple and easy to implement.
 Cons: Does not take into account the usage patterns, so it may remove data that is still frequently used.
 Choosing the right cache updation policy depends on the specific requirements and constraints of the application, such as the balance between read and write operations, data consistency needs, and performance considerations.
+
+Restarting your Spring Boot application will not directly remove data from a Redis server. Redis is a standalone in-memory data store, so its data is independent of your Spring Boot application. Here’s a brief overview of how it works:
+
+Redis Server Data Persistence:
+
+Redis has built-in mechanisms for data persistence, such as RDB (Redis Database Backup) snapshots and AOF (Append-Only File) logs. This means that even if your Spring Boot application restarts or crashes, the data stored in Redis will persist according to the configured persistence options.
+Application and Redis Independence:
+
+Your Spring Boot application interacts with Redis through a client library (such as Spring Data Redis), but the Redis server operates independently of your application. Restarting or redeploying your application will not affect the Redis server or its stored data.
+Cache Configuration:
+
+If your application uses Redis as a cache, you should ensure that your cache configuration does not include settings that would clear the cache on application restart. For example, if you are using cache eviction strategies like @CacheEvict, make sure they are configured according to your needs.
+Session Management:
+
+If Redis is used for session management and you restart your application, the session data stored in Redis should remain intact. However, if your application’s session management strategy involves specific operations that clear or invalidate sessions, those actions would need to be configured explicitly.
+Application Logic:
+
+If your application contains logic that clears or modifies the cache or session data upon startup, then such logic could result in data being removed or modified. Make sure to review any initialization or startup scripts in your application that might interact with Redis.
+In summary, a typical restart of a Spring Boot application will not affect the data in Redis, but be sure to check your application’s configuration and any startup logic to ensure that no unintended data modifications or deletions are taking place.
+
+
+
