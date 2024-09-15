@@ -622,5 +622,68 @@ Application Logic:
 If your application contains logic that clears or modifies the cache or session data upon startup, then such logic could result in data being removed or modified. Make sure to review any initialization or startup scripts in your application that might interact with Redis.
 In summary, a typical restart of a Spring Boot application will not affect the data in Redis, but be sure to check your application’s configuration and any startup logic to ensure that no unintended data modifications or deletions are taking place.
 
+----
+Redis handles Time-To-Live (TTL) and eviction through a combination of data structures and algorithms designed to efficiently manage memory usage and ensure that expired keys are handled properly. Here’s a detailed overview of how Redis manages TTL and eviction:
 
+1. Time-To-Live (TTL)
+TTL Mechanism:
 
+Setting TTL: When you set a TTL for a key in Redis, Redis associates the key with an expiration time. The TTL specifies how long the key should remain in the database before it is automatically deleted.
+Types of TTL: Redis supports two primary ways to set expiration for keys:
+Absolute Expiration: You can set an expiration time that specifies a specific point in time when the key should expire (EXPIRE command).
+Relative Expiration: You can set an expiration time relative to the current time, such as "expire in 3600 seconds" (EXPIRE command).
+Implementation:
+
+Expiration Data Structure: Redis maintains a sorted set called the expires dictionary where it tracks the expiration times of keys. Each entry in this sorted set contains a timestamp and the key to expire.
+Active Expiration: Redis does not actively remove expired keys from the database at every access. Instead, it checks for expired keys when they are accessed and removes them if they are found to be expired.
+Lazy Deletion: Redis uses a "lazy" deletion strategy, where keys are removed only when they are accessed after expiration. This approach minimizes the overhead of managing expired keys but can result in some keys being retained in memory until they are accessed.
+2. Key Expiration Strategies
+Redis employs several strategies to handle key expiration:
+
+Lazy Expiration: Keys are deleted only when they are accessed after they have expired. This minimizes the performance impact on the Redis server but means expired keys might remain in memory until accessed.
+
+Active Expiration: Redis periodically scans for expired keys to remove them. This is done through two methods:
+
+Random Sampling: Redis randomly samples a small number of keys from the database and removes those that have expired. This approach helps prevent Redis from becoming overwhelmed with expired keys.
+Scheduled Expiration: Redis performs scheduled scans to remove expired keys. This is done using a process called "timer-driven eviction," where Redis checks the keys that are close to their expiration time.
+3. Eviction Policies
+Redis manages memory usage through configurable eviction policies. When Redis runs out of memory, it needs to decide which keys to remove. Redis offers several eviction policies:
+
+No Eviction: Redis will return an error if the memory limit is reached and no more keys can be added.
+
+Volatile-LRU (Least Recently Used): Evicts the least recently used keys with an expiration set (EXPIRE, TTL).
+
+Volatile-LFU (Least Frequently Used): Evicts the least frequently used keys with an expiration set.
+
+Volatile-Random: Evicts random keys with an expiration set.
+
+Allkeys-LRU: Evicts the least recently used keys regardless of whether they have an expiration set or not.
+
+Allkeys-LFU: Evicts the least frequently used keys regardless of expiration.
+
+Allkeys-Random: Evicts random keys regardless of whether they have an expiration set.
+
+4. Example Commands and Usage
+Setting TTL:
+
+sh
+Copy code
+SET key "value" EX 3600   # Set key with a TTL of 3600 seconds (1 hour)
+Checking TTL:
+
+sh
+Copy code
+TTL key                   # Returns the remaining time to live of a key in seconds
+Removing Expired Keys (Active Expiration):
+
+Redis automatically handles the removal of expired keys. However, you can use commands like SCAN or KEYS to identify and manually remove expired keys.
+
+Eviction Policy Configuration:
+
+You can configure the eviction policy in the Redis configuration file (redis.conf) using the maxmemory-policy directive:
+
+sh
+Copy code
+maxmemory-policy allkeys-lru  # Configure Redis to use LRU eviction for all keys
+Summary
+Redis uses TTL to manage the expiration of keys, with a combination of lazy deletion and periodic active expiration. Redis also employs different eviction policies to handle memory constraints, ensuring that the database operates efficiently under varying load conditions. By configuring TTL and eviction policies appropriately, Redis can maintain performance and reliability while managing memory usage effectively.
