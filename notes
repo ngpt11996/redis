@@ -1304,3 +1304,178 @@ Namespace Separation: Each microservice uses a different key prefix (user:, prod
 Connection Management: Each service connects to the same Redis server using the LettuceConnectionFactory.
 Testing and Monitoring: Ensure each microservice interacts with Redis as expected and monitor Redis for performance and capacity.
 By following these steps, you ensure that each microservice can independently manage its own data in a shared Redis server while avoiding key collisions and maintaining clean data separation.
+
+---
+
+Sure! Let’s walk through an example of how you can use a single Redis server with multiple microservices in a Java Spring Boot application. We'll use three microservices:
+
+User Service – Manages user information.
+Product Service – Manages product catalog.
+Order Service – Manages orders.
+Prerequisites
+Redis Server running and accessible.
+Spring Boot applications set up for each microservice.
+Spring Data Redis dependency added to each microservice.
+Common Setup for All Services
+First, add the Redis and Spring Data Redis dependencies to your pom.xml:
+
+xml
+Copy code
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-redis</artifactId>
+</dependency>
+Configuration
+Create a Redis configuration class in each microservice to manage Redis connection properties and enable Redis support. Here’s how you can configure it:
+
+1. Common Redis Configuration
+Create a class RedisConfig.java in each microservice:
+
+java
+Copy code
+package com.example.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+@Configuration
+public class RedisConfig {
+
+    @Bean
+    public RedisConnectionFactory redisConnectionFactory() {
+        return new LettuceConnectionFactory("localhost", 6379); // Redis server address and port
+    }
+
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate() {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(redisConnectionFactory());
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new StringRedisSerializer());
+        return template;
+    }
+}
+2. Service-Specific Implementations
+User Service
+Create a service class UserService.java to manage user data:
+
+java
+Copy code
+package com.example.userservice.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+
+@Service
+public class UserService {
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    private static final String USER_KEY_PREFIX = "user:";
+
+    public void saveUser(String userId, String name) {
+        redisTemplate.opsForValue().set(USER_KEY_PREFIX + userId, name);
+    }
+
+    public String getUser(String userId) {
+        return (String) redisTemplate.opsForValue().get(USER_KEY_PREFIX + userId);
+    }
+}
+Product Service
+Create a service class ProductService.java to manage product data:
+
+java
+Copy code
+package com.example.productservice.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+
+@Service
+public class ProductService {
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    private static final String PRODUCT_KEY_PREFIX = "product:";
+
+    public void saveProduct(String productId, String details) {
+        redisTemplate.opsForValue().set(PRODUCT_KEY_PREFIX + productId, details);
+    }
+
+    public String getProduct(String productId) {
+        return (String) redisTemplate.opsForValue().get(PRODUCT_KEY_PREFIX + productId);
+    }
+}
+Order Service
+Create a service class OrderService.java to manage order data:
+
+java
+Copy code
+package com.example.orderservice.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+
+@Service
+public class OrderService {
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    private static final String ORDER_KEY_PREFIX = "order:";
+
+    public void saveOrder(String orderId, String status) {
+        redisTemplate.opsForValue().set(ORDER_KEY_PREFIX + orderId, status);
+    }
+
+    public String getOrder(String orderId) {
+        return (String) redisTemplate.opsForValue().get(ORDER_KEY_PREFIX + orderId);
+    }
+}
+3. Example Usage
+You can now use these services in your controllers or other components. For instance, in the UserService:
+
+java
+Copy code
+package com.example.userservice.controller;
+
+import com.example.userservice.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class UserController {
+
+    @Autowired
+    private UserService userService;
+
+    @PostMapping("/user/{userId}")
+    public void saveUser(@PathVariable String userId, @RequestBody String name) {
+        userService.saveUser(userId, name);
+    }
+
+    @GetMapping("/user/{userId}")
+    public String getUser(@PathVariable String userId) {
+        return userService.getUser(userId);
+    }
+}
+Repeat similar setups for ProductService and OrderService.
+
+Key Points
+Namespace Separation: Each microservice uses a different key prefix (user:, product:, order:) to avoid key collisions in Redis.
+Connection Management: Each service connects to the same Redis server using the LettuceConnectionFactory.
+Testing and Monitoring: Ensure each microservice interacts with Redis as expected and monitor Redis for performance and capacity.
+By following these steps, you ensure that each microservice can independently manage its own data in a shared Redis server while avoiding key collisions and maintaining clean data separation.
