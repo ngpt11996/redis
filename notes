@@ -1036,3 +1036,96 @@ Summary
 Snapshotting and Persistence: Configure Redis persistence using redis.conf for RDB and AOF settings.
 Logging Configuration: Set logging levels for Lettuce or Jedis in your application.properties or application.yml to capture detailed logs of Redis operations.
 By configuring these options, you can ensure Redis persistence and logging are set up correctly to meet your application's needs.
+
+---
+
+In Spring Data Redis, the RedisTemplate class provides methods to interact with Redis, including setting expiration times for keys. To set or update the TTL (Time-to-Live) of a key using RedisTemplate, you can use the expire method.
+
+Using expire with RedisTemplate
+The expire method is used to set a timeout on a key, after which the key will be automatically deleted. The method has several overloaded versions that allow you to specify the timeout in different units.
+
+Here’s a breakdown of how to use the expire method:
+
+1. Basic Usage
+Method Signature:
+
+java
+Copy code
+boolean expire(String key, long timeout, TimeUnit unit);
+Parameters:
+
+key: The key for which you want to set the expiration.
+timeout: The timeout value.
+unit: The time unit for the timeout value (e.g., TimeUnit.SECONDS, TimeUnit.MINUTES).
+Example:
+
+java
+Copy code
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+
+import java.util.concurrent.TimeUnit;
+
+@Service
+public class RedisService {
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    public void setValueWithTTL(String key, Object value, long timeout, TimeUnit unit) {
+        redisTemplate.opsForValue().set(key, value);
+        redisTemplate.expire(key, timeout, unit); // Set TTL
+    }
+
+    public boolean checkKeyTTL(String key) {
+        return redisTemplate.getExpire(key, TimeUnit.SECONDS) > 0;
+    }
+}
+In this example:
+
+setValueWithTTL sets a value in Redis and applies a TTL.
+checkKeyTTL checks if the key exists and has a TTL greater than 0 seconds.
+2. Setting Expiration in Seconds
+If you want to set the expiration time specifically in seconds, you can use the expire method and TimeUnit.SECONDS.
+
+Example:
+
+java
+Copy code
+redisTemplate.expire("myKey", 3600, TimeUnit.SECONDS); // Set TTL of 1 hour
+3. Setting Expiration with a Date
+If you want to set an expiration time as a specific date and time, you should use the expireAt method.
+
+Method Signature:
+
+java
+Copy code
+boolean expireAt(String key, Date date);
+Example:
+
+java
+Copy code
+import java.util.Date;
+
+Date expirationDate = new Date(System.currentTimeMillis() + 3600 * 1000); // 1 hour from now
+redisTemplate.expireAt("myKey", expirationDate);
+4. Removing Expiration
+If you want to remove the expiration from a key (i.e., make it persistent), you can use the persist method.
+
+Method Signature:
+
+java
+Copy code
+boolean persist(String key);
+Example:
+
+java
+Copy code
+redisTemplate.persist("myKey"); // Remove TTL and make the key persistent
+Summary
+Setting TTL: Use the expire method to set a timeout for a key in Redis.
+Expiration Units: Specify the timeout in various units (e.g., seconds, minutes) using TimeUnit.
+Expiration Date: Use the expireAt method to set expiration based on a specific date and time.
+Removing TTL: Use the persist method to remove the expiration from a key.
+By utilizing these methods, you can effectively manage key expiration and TTL settings in your Redis-backed Spring Boot application.
