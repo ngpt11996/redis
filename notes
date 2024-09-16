@@ -1651,3 +1651,176 @@ Monitor the Redis connection pool and adjust the settings based on your applicat
 
 Conclusion
 By configuring Jedis connection pooling in your Spring Boot applications, you ensure that each microservice efficiently manages its connections to a shared Redis server. This setup helps in optimizing resource utilization and performance across multiple microservices.
+
+---
+
+Using Redis Sorted Sets in a Spring Boot application involves a few steps, including setting up Redis, configuring Spring Boot to use Redis, and then interacting with Sorted Sets. Here’s a step-by-step guide to get you started:
+
+1. Set Up Redis
+Ensure you have a Redis server running. You can either:
+
+Install Redis locally and run it, or
+Use a cloud Redis service like Amazon ElastiCache, Redis Labs, etc.
+2. Add Dependencies
+In your Spring Boot project's pom.xml (for Maven) or build.gradle (for Gradle), add the necessary dependencies:
+
+For Maven:
+
+xml
+Copy code
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-redis</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.data</groupId>
+    <artifactId>spring-data-redis</artifactId>
+</dependency>
+For Gradle:
+
+groovy
+Copy code
+implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+implementation 'org.springframework.data:spring-data-redis'
+3. Configure Redis in application.properties or application.yml
+In src/main/resources/application.properties or application.yml, configure Redis properties:
+
+For application.properties:
+
+properties
+Copy code
+spring.redis.host=localhost
+spring.redis.port=6379
+For application.yml:
+
+yaml
+Copy code
+spring:
+  redis:
+    host: localhost
+    port: 6379
+4. Create a Redis Configuration Class (Optional)
+If you need custom configurations or use a different Redis client library, create a configuration class:
+
+java
+Copy code
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.GenericToStringSerializer;
+
+@Configuration
+public class RedisConfig {
+
+    @Bean
+    public RedisConnectionFactory redisConnectionFactory() {
+        return new LettuceConnectionFactory(); // Or any other Redis connection factory
+    }
+
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate() {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(redisConnectionFactory());
+        template.setValueSerializer(new GenericToStringSerializer<>(Object.class));
+        return template;
+    }
+}
+5. Use Sorted Sets in Your Application
+You can use RedisTemplate to interact with Redis Sorted Sets. Here’s an example of how to use it in a service class:
+
+java
+Copy code
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+
+import java.util.Set;
+
+@Service
+public class SortedSetService {
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    private static final String SORTED_SET_KEY = "mySortedSet";
+
+    // Add elements to the sorted set
+    public void addElement(String element, double score) {
+        redisTemplate.opsForZSet().add(SORTED_SET_KEY, element, score);
+    }
+
+    // Get elements with scores in a range
+    public Set<Object> getElementsByScore(double minScore, double maxScore) {
+        return redisTemplate.opsForZSet().rangeByScore(SORTED_SET_KEY, minScore, maxScore);
+    }
+
+    // Get elements with scores in a specific range
+    public Set<Object> getElementsByRank(long start, long end) {
+        return redisTemplate.opsForZSet().range(SORTED_SET_KEY, start, end);
+    }
+
+    // Remove an element from the sorted set
+    public void removeElement(String element) {
+        redisTemplate.opsForZSet().remove(SORTED_SET_KEY, element);
+    }
+
+    // Get the score of an element
+    public Double getScore(String element) {
+        return redisTemplate.opsForZSet().score(SORTED_SET_KEY, element);
+    }
+}
+6. Use the Service in Your Application
+You can autowire SortedSetService into your controllers or other services to use the sorted sets as needed.
+
+java
+Copy code
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Set;
+
+@RestController
+public class SortedSetController {
+
+    @Autowired
+    private SortedSetService sortedSetService;
+
+    @GetMapping("/add")
+    public String add(@RequestParam String element, @RequestParam double score) {
+        sortedSetService.addElement(element, score);
+        return "Element added";
+    }
+
+    @GetMapping("/getByScore")
+    public Set<Object> getByScore(@RequestParam double minScore, @RequestParam double maxScore) {
+        return sortedSetService.getElementsByScore(minScore, maxScore);
+    }
+
+    @GetMapping("/getByRank")
+    public Set<Object> getByRank(@RequestParam long start, @RequestParam long end) {
+        return sortedSetService.getElementsByRank(start, end);
+    }
+
+    @GetMapping("/remove")
+    public String remove(@RequestParam String element) {
+        sortedSetService.removeElement(element);
+        return "Element removed";
+    }
+
+    @GetMapping("/score")
+    public Double getScore(@RequestParam String element) {
+        return sortedSetService.getScore(element);
+    }
+}
+Summary
+Set up Redis and ensure it’s running.
+Add Redis dependencies to your Spring Boot project.
+Configure Redis in your application.properties or application.yml.
+Create a configuration class if needed.
+Use RedisTemplate to interact with Redis Sorted Sets in your services.
+Implement your logic and use it in your application.
+This should give you a solid start on using Redis Sorted Sets with Spring Boot. If you have any more specific requirements or run into issues, feel free to ask!
